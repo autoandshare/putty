@@ -934,7 +934,7 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show)
     logpal = NULL;
     init_palette();
 
-    term_set_focus(term, GetForegroundWindow() == wgs.term_hwnd);
+    term_set_focus(term, GetFocus() == wgs.term_hwnd);
     UpdateWindow(wgs.term_hwnd);
 
     while (1) {
@@ -965,7 +965,7 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show)
         } else {
             timeout = INFINITE;
             /* The messages seem unreliable; especially if we're being tricky */
-            term_set_focus(term, GetForegroundWindow() == wgs.term_hwnd);
+            term_set_focus(term, GetFocus() == wgs.term_hwnd);
         }
 
         handles = handle_get_events(&nhandles);
@@ -2622,6 +2622,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
       case WM_LBUTTONUP:
       case WM_MBUTTONUP:
       case WM_RBUTTONUP:
+          SetFocus(hwnd);
         if (message == WM_RBUTTONDOWN &&
             ((wParam & MK_CONTROL) ||
              (conf_get_int(conf, CONF_mouse_is_xterm) == 2))) {
