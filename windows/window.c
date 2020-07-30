@@ -1846,8 +1846,8 @@ static void reset_window(int reinit) {
 		 */
 		term_size(term, win_height/font_height, win_width/font_width,
 			  conf_get_int(conf, CONF_savelines));
-		offset_width = (win_width-font_width*term->cols)/2;
-		offset_height = (win_height-font_height*term->rows)/2;
+		offset_width = 1; // (win_width-font_width*term->cols)/2;
+		offset_height = 1; // (win_height-font_height*term->rows)/2;
 		InvalidateRect(hwnd, NULL, TRUE);
 #ifdef RDB_DEBUG_PATCH
 		debug((27, "reset_window() -> Zoomed term_size"));
