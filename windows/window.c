@@ -312,13 +312,26 @@ static void start_backend(void)
     session_closed = FALSE;
 }
 
-static void send_disconnect_msg()
+static void send_msg_to_parent(UINT msg)
 {
 	HWND parent = GetParent(hwnd);
 	if (parent != NULL)
 	{
-		PostMessage(parent, WM_USER + 0x1, 0, 0);
+		PostMessage(parent, msg, 0, 0);
 	}
+}
+static void send_disconnect_msg()
+{
+	send_msg_to_parent(WM_USER + 0x1);
+	}
+
+static void send_focus_history_msg()
+{
+	send_msg_to_parent(WM_USER + 0x2);
+}
+
+static void send_screen_to_parent()
+{
 }
 
 static void close_session(void *ignored_context)
@@ -3125,7 +3138,6 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
 	 * number noise.
 	 */
 	noise_ultralight(lParam);
-
 	/*
 	 * We don't do TranslateMessage since it disassociates the
 	 * resulting CHAR message from the KEYDOWN that sparked it,
@@ -3140,6 +3152,14 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
 	    if (wParam == VK_PROCESSKEY || /* IME PROCESS key */
                 wParam == VK_PACKET) {     /* 'this key is a Unicode char' */
 		if (message == WM_KEYDOWN) {
+			/* special handling for toolpak */
+			/* ctrl-h to focus history */
+			if ((GetKeyState(VK_CONTROL) & 0x80000000) && (wParam == 'H'))
+			{
+				send_focus_history_msg();
+				return 0;
+			}
+
 		    MSG m;
 		    m.hwnd = hwnd;
 		    m.message = WM_KEYDOWN;
