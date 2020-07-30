@@ -82,6 +82,8 @@ static const wchar_t sel_nl[] = SEL_NL;
  */
 #define CSET_OF(chr) (DIRECT_CHAR(chr)||DIRECT_FONT(chr) ? (chr)&CSET_MASK : 0)
 
+extern void send_copydata_to_parent(size_t bufpos, wchar_t* textbuf);
+
 /*
  * Internal prototypes.
  */
@@ -5903,8 +5905,8 @@ static void clip_addchar(clip_workbuf *b, wchar_t chr, int attr, truecolour tc)
     b->bufpos++;
 }
 
-static void clipme(Terminal *term, pos top, pos bottom, bool rect, bool desel,
-                   const int *clipboards, int n_clipboards)
+static void clipme_internal(Terminal *term, pos top, pos bottom, bool rect, bool desel,
+                   const int *clipboards, int n_clipboards, bool to_parent)
 {
     clip_workbuf buf;
     int old_top_x;
@@ -6072,6 +6074,12 @@ static void clipme(Terminal *term, pos top, pos bottom, bool rect, bool desel,
 #if SELECTION_NUL_TERMINATED
     clip_addchar(&buf, 0, 0, term->basic_erase_char.truecolour);
 #endif
+    if (to_parent)
+    {
+        send_copydata_to_parent(buf.bufpos, buf.textbuf);
+        return;
+    }
+
     /* Finally, transfer all that to the clipboard(s). */
     {
         int i;
@@ -6099,6 +6107,12 @@ static void clipme(Terminal *term, pos top, pos bottom, bool rect, bool desel,
             sfree(buf.tcbuf);
         }
     }
+}
+
+static void clipme(Terminal* term, pos top, pos bottom, bool rect, bool desel,
+    const int* clipboards, int n_clipboards)
+{
+    clipme_internal(term, top, bottom, rect, desel, clipboards, n_clipboards, false);
 }
 
 void term_copyall(Terminal *term, const int *clipboards, int n_clipboards)
@@ -7088,10 +7102,30 @@ static void term_added_data(Terminal *term)
     }
 }
 
+static void send_screen_to_parent(Terminal* term)
+{
+	pos top;
+	pos bottom;
+	tree234 *screen = term->screen;
+	top.y = 0;
+	top.x = 0;
+	bottom.y = find_last_nonempty_line(term, screen);
+	bottom.x = term->cols;
+	clipme_internal(term, top, bottom, 0, TRUE, NULL, 0, true);
+}
+
 size_t term_data(Terminal *term, bool is_stderr, const void *data, size_t len)
 {
     bufchain_add(&term->inbuf, data, len);
     term_added_data(term);
+
+    /* capture text when enter is pressed or mouse right click */
+    if (term->text_capture_pending &&
+        (memchr(data, '\r', len) || memchr(data, '\n', len)))
+    {
+        term->text_capture_pending = 0;
+        send_screen_to_parent(term);
+    }
 
     /*
      * term_out() always completely empties inbuf. Therefore,

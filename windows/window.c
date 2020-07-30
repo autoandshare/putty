@@ -439,6 +439,19 @@ static void start_backend(void)
     sfree(title_to_free);
 }
 
+void send_copydata_to_parent(size_t bufpos, wchar_t* textbuf)
+{
+    HWND parent = GetParent(wgs.term_hwnd);
+    if (parent != NULL)
+    {
+        COPYDATASTRUCT copy_data;
+        copy_data.dwData = WM_USER + 0x3;
+        copy_data.cbData = bufpos * sizeof(wchar_t);
+        copy_data.lpData = textbuf;
+        SendMessage(parent, WM_COPYDATA, (WPARAM)wgs.term_hwnd, (LPARAM)&copy_data);
+    }
+}
+
 static void send_msg_to_parent(UINT msg)
 {
 	HWND parent = GetParent(wgs.term_hwnd);
@@ -455,10 +468,6 @@ static void send_disconnect_msg()
 static void send_focus_history_msg()
 {
 	send_msg_to_parent(WM_USER + 0x2);
-}
-
-static void send_screen_to_parent()
-{
 }
 
 static void close_session(void *ignored_context)
@@ -2645,6 +2654,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
                 button = MBT_RIGHT;
                 wParam |= MK_RBUTTON;
                 press = true;
+                term->text_capture_pending = 1;
                 break;
               case WM_LBUTTONUP:
                 button = MBT_LEFT;
@@ -3237,14 +3247,6 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
             if (wParam == VK_PROCESSKEY || /* IME PROCESS key */
                 wParam == VK_PACKET) {     /* 'this key is a Unicode char' */
                 if (message == WM_KEYDOWN) {
-                    /* special handling for toolpak */
-                    /* ctrl-h to focus history */
-                    if ((GetKeyState(VK_CONTROL) & 0x80000000) && (wParam == 'H'))
-                    {
-                        send_focus_history_msg();
-                        return 0;
-                    }
-
                     MSG m;
                     m.hwnd = hwnd;
                     m.message = WM_KEYDOWN;
@@ -3253,6 +3255,21 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
                     TranslateMessage(&m);
                 } else break; /* pass to Windows for default processing */
             } else {
+                if (message == WM_KEYDOWN) {
+                    /* special handling for toolpak */
+                    /* ctrl-h to focus history */
+                    if ((GetKeyState(VK_CONTROL) & 0x80000000) && (wParam == 'H'))
+                    {
+                        send_focus_history_msg();
+                        return 0;
+                    }
+                    /* enter to send screen data */
+                    if (wParam == VK_RETURN)
+                    {
+                        term->text_capture_pending = 1;
+                    }
+                }
+
                 len = TranslateKey(message, wParam, lParam, buf);
                 if (len == -1)
                     return DefWindowProcW(hwnd, message, wParam, lParam);

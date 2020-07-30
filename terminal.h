@@ -329,6 +329,9 @@ struct terminal_tag {
     bool utf8linedraw;
     bool rect_select;
     int remote_qtitle_action;
+
+    int text_capture_pending;
+
     bool rxvt_homeend;
     bool scroll_on_disp;
     bool scroll_on_key;
