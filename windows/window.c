@@ -439,10 +439,21 @@ static void start_backend(void)
     sfree(title_to_free);
 }
 
+static void send_disconnect_msg()
+{
+	HWND parent = GetParent(wgs.term_hwnd);
+	if (parent != NULL)
+	{
+		PostMessage(parent, WM_USER + 0x1, 0, 0);
+	}
+}
+
 static void close_session(void *ignored_context)
 {
     char *newtitle;
     int i;
+
+    send_disconnect_msg();
 
     session_closed = true;
     newtitle = dupprintf("%s (inactive)", appname);
