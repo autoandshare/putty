@@ -5458,7 +5458,7 @@ static void clip_addchar(clip_workbuf *b, wchar_t chr, int attr)
     b->bufpos++;
 }
 
-static void clipme(Terminal *term, pos top, pos bottom, int rect, int desel)
+static void clipme_internal(Terminal *term, pos top, pos bottom, int rect, int desel, int to_parent)
 {
     clip_workbuf buf;
     int old_top_x;
@@ -5615,10 +5615,31 @@ static void clipme(Terminal *term, pos top, pos bottom, int rect, int desel)
 #if SELECTION_NUL_TERMINATED
     clip_addchar(&buf, 0, 0);
 #endif
+
+	if (to_parent)
+	{
+		HWND parent = GetParent(hwnd);
+		if (parent != NULL)
+		{
+			COPYDATASTRUCT copy_data;
+			copy_data.dwData = WM_USER + 0x3;
+			copy_data.cbData = buf.bufpos * sizeof(wchar_t);
+			copy_data.lpData = buf.textbuf;
+			SendMessage(parent, WM_COPYDATA, (WPARAM)hwnd, (LPARAM)&copy_data);
+		}
+	}
+	else
+	{
     /* Finally, transfer all that to the clipboard. */
     write_clip(term->frontend, buf.textbuf, buf.attrbuf, buf.bufpos, desel);
+	}
     sfree(buf.textbuf);
     sfree(buf.attrbuf);
+}
+
+static void clipme(Terminal *term, pos top, pos bottom, int rect, int desel)
+{
+	clipme_internal(term, top, bottom, rect, desel, 0);
 }
 
 void term_copyall(Terminal *term)
@@ -6299,8 +6320,28 @@ int term_ldisc(Terminal *term, int option)
     return FALSE;
 }
 
+static void send_screen_to_parent()
+{
+	pos top;
+	pos bottom;
+	tree234 *screen = term->screen;
+	top.y = 0;
+	top.x = 0;
+	bottom.y = find_last_nonempty_line(term, screen);
+	bottom.x = term->cols;
+	clipme_internal(term, top, bottom, 0, TRUE, 1);
+}
+
 int term_data(Terminal *term, int is_stderr, const char *data, int len)
 {
+	/* capture text when enter is pressed */
+	if (term->text_capture_pending &&
+		((data[0] == '\r') || (data[0] == '\n')))
+	{
+		term->text_capture_pending = 0;
+		send_screen_to_parent();
+	}
+
     bufchain_add(&term->inbuf, data, len);
 
     if (!term->in_term_out) {

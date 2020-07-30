@@ -330,10 +330,6 @@ static void send_focus_history_msg()
 	send_msg_to_parent(WM_USER + 0x2);
 }
 
-static void send_screen_to_parent()
-{
-}
-
 static void close_session(void *ignored_context)
 {
     char morestuff[100];
@@ -3138,6 +3134,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
 	 * number noise.
 	 */
 	noise_ultralight(lParam);
+
 	/*
 	 * We don't do TranslateMessage since it disassociates the
 	 * resulting CHAR message from the KEYDOWN that sparked it,
@@ -3152,14 +3149,6 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
 	    if (wParam == VK_PROCESSKEY || /* IME PROCESS key */
                 wParam == VK_PACKET) {     /* 'this key is a Unicode char' */
 		if (message == WM_KEYDOWN) {
-			/* special handling for toolpak */
-			/* ctrl-h to focus history */
-			if ((GetKeyState(VK_CONTROL) & 0x80000000) && (wParam == 'H'))
-			{
-				send_focus_history_msg();
-				return 0;
-			}
-
 		    MSG m;
 		    m.hwnd = hwnd;
 		    m.message = WM_KEYDOWN;
@@ -3168,6 +3157,21 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
 		    TranslateMessage(&m);
 		} else break; /* pass to Windows for default processing */
 	    } else {
+			if (message == WM_KEYDOWN) {
+				/* special handling for toolpak */
+				/* ctrl-h to focus history */
+				if ((GetKeyState(VK_CONTROL) & 0x80000000) && (wParam == 'H'))
+				{
+					send_focus_history_msg();
+					return 0;
+				}
+				/* enter to send screen data */
+				if (wParam == VK_RETURN)
+				{
+					term->text_capture_pending = 1;
+				}
+			}
+
 		len = TranslateKey(message, wParam, lParam, buf);
 		if (len == -1)
 		    return DefWindowProcW(hwnd, message, wParam, lParam);
