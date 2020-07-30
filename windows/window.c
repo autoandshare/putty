@@ -5703,7 +5703,7 @@ static bool is_full_screen()
 {
     if (!IsZoomed(wgs.term_hwnd))
         return false;
-    if (GetWindowLongPtr(wgs.term_hwnd, GWL_STYLE) & WS_CAPTION)
+    if (GetWindowLongPtr(wgs.term_hwnd, GWL_STYLE) & (WS_CAPTION | WS_CHILD))
         return false;
     return true;
 }
