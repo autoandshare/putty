@@ -5695,7 +5695,7 @@ static int is_full_screen()
 {
     if (!IsZoomed(hwnd))
 	return FALSE;
-    if (GetWindowLongPtr(hwnd, GWL_STYLE) & WS_CAPTION)
+    if (GetWindowLongPtr(hwnd, GWL_STYLE) & (WS_CAPTION|WS_CHILD))
 	return FALSE;
     return TRUE;
 }
