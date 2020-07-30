@@ -312,10 +312,21 @@ static void start_backend(void)
     session_closed = FALSE;
 }
 
+static void send_disconnect_msg()
+{
+	HWND parent = GetParent(hwnd);
+	if (parent != NULL)
+	{
+		PostMessage(parent, WM_USER + 0x1, 0, 0);
+	}
+}
+
 static void close_session(void *ignored_context)
 {
     char morestuff[100];
     int i;
+
+	send_disconnect_msg();
 
     session_closed = TRUE;
     sprintf(morestuff, "%.70s (inactive)", appname);
