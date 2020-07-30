@@ -2454,6 +2454,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
                   nflg &= ~WS_VSCROLL;
 
               if (resize_action == RESIZE_DISABLED ||
+                  (flag & WS_CHILD) ||
                   is_full_screen())
                   nflg &= ~WS_THICKFRAME;
               else
