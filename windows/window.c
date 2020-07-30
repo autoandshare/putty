@@ -2239,8 +2239,18 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
 	    }
 	    break;
 	  case IDM_RESTART:
-	    if (!back) {
+	    if (session_closed && (!back)) {
 		logevent(NULL, "----- Session restarted -----");
+		{
+			extern int tried_once;
+			extern char * cmdline_password;
+			extern char * cmdline_password_sav;
+			tried_once = 0;
+			if ((cmdline_password_sav != NULL) && (cmdline_password == NULL))
+			{
+				cmdline_password = dupstr(cmdline_password_sav);
+			}
+		}
 		term_pwron(term, FALSE);
 		start_backend();
 	    }

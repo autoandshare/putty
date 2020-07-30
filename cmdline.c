@@ -56,7 +56,8 @@ static void cmdline_save_param(const char *p, const char *value, int pri)
     saves[pri].nsaved++;
 }
 
-static char *cmdline_password = NULL;
+extern char *cmdline_password = NULL;
+extern char *cmdline_password_sav = NULL;
 
 void cmdline_cleanup(void)
 {
@@ -85,9 +86,9 @@ void cmdline_cleanup(void)
  * return means that we aren't capable of processing the prompt and
  * someone else should do it.
  */
+extern int tried_once = 0;
 int cmdline_get_passwd_input(prompts_t *p, const unsigned char *in, int inlen)
 {
-    static int tried_once = 0;
 
     /*
      * We only handle prompts which don't echo (which we assume to be
@@ -382,6 +383,7 @@ int cmdline_process_param(const char *p, char *value,
 			  "SSH protocol");
 	else {
 	    cmdline_password = dupstr(value);
+		cmdline_password_sav = dupstr(value);
 	    /* Assuming that `value' is directly from argv, make a good faith
 	     * attempt to trample it, to stop it showing up in `ps' output
 	     * on Unix-like systems. Not guaranteed, of course. */
