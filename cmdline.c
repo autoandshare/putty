@@ -160,6 +160,52 @@ static int cmdline_check_unavailable(int flag, const char *p)
     if (need_save < 0) return x; \
 } while (0)
 
+void get_pw_from_socket(char* port_and_key) {
+
+    WSADATA wsa;
+    SOCKET s;
+    struct sockaddr_in server;
+    char server_reply[256] = { 0 };
+
+    char* key_start = strchr(port_and_key, ',');
+    if (key_start == NULL) {
+	cmdline_error("Invalid port and key : %s", port_and_key);
+	return;
+    }
+
+    key_start[0] = '\0';
+    key_start += 1;
+
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
+	cmdline_error("Initialising Winsock Failed. Error Code : %d", WSAGetLastError());
+    }
+
+    if ((s = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
+	cmdline_error("Could not create socket. Error Code : %d", WSAGetLastError());
+    }
+
+    server.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server.sin_family = AF_INET;
+    server.sin_port = htons(atoi(port_and_key));
+
+    if (connect(s, (struct sockaddr*)&server, sizeof(server)) < 0) {
+	cmdline_error("Unable to connect password socket port. Error Code : %d", WSAGetLastError());
+    }
+
+    if (send(s, key_start, strlen(key_start), 0) < 0) {
+	cmdline_error("Send to password socket failed. Error Code : %d", WSAGetLastError());
+    }
+
+    if (recv(s, server_reply, sizeof(server_reply), 0) == SOCKET_ERROR) {
+	cmdline_error("Failed to receive password. Error Code : %d", WSAGetLastError());
+    }
+
+    cmdline_password = dupstr(server_reply);
+    cmdline_password_sav = dupstr(server_reply);
+
+    closesocket(s);
+}
+
 int cmdline_process_param(const char *p, char *value,
                           int need_save, Conf *conf)
 {
@@ -383,12 +429,17 @@ int cmdline_process_param(const char *p, char *value,
 			  "SSH protocol");
 	else {
 	    cmdline_password = dupstr(value);
-		cmdline_password_sav = dupstr(value);
 	    /* Assuming that `value' is directly from argv, make a good faith
 	     * attempt to trample it, to stop it showing up in `ps' output
 	     * on Unix-like systems. Not guaranteed, of course. */
 	    smemclr(value, strlen(value));
 	}
+    }
+
+    if (!strcmp(p, "-pw_socket")) {
+	RETURN(2);
+
+	get_pw_from_socket(value);
     }
 
     if (!strcmp(p, "-agent") || !strcmp(p, "-pagent") ||
