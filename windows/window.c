@@ -2557,6 +2557,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
 		button = MBT_RIGHT;
 		wParam |= MK_RBUTTON;
 		press = 1;
+		term->text_capture_pending = 1;
 		break;
 	      case WM_LBUTTONUP:
 		button = MBT_LEFT;

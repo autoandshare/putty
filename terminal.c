@@ -6334,14 +6334,6 @@ static void send_screen_to_parent()
 
 int term_data(Terminal *term, int is_stderr, const char *data, int len)
 {
-	/* capture text when enter is pressed */
-	if (term->text_capture_pending &&
-		((data[0] == '\r') || (data[0] == '\n')))
-	{
-		term->text_capture_pending = 0;
-		send_screen_to_parent();
-	}
-
     bufchain_add(&term->inbuf, data, len);
 
     if (!term->in_term_out) {
@@ -6355,6 +6347,14 @@ int term_data(Terminal *term, int is_stderr, const char *data, int len)
 	if (term->selstate != DRAGGING)
 	    term_out(term);
 	term->in_term_out = FALSE;
+    }
+
+    /* capture text when enter is pressed */
+    if (term->text_capture_pending &&
+        (strchr(data, '\r') || strchr(data, '\n')))
+    {
+        term->text_capture_pending = 0;
+        send_screen_to_parent();
     }
 
     /*
