@@ -102,10 +102,10 @@ int cmdline_get_passwd_input(prompts_t *p)
         return 0;
 
     prompt_set_result(p->prompts[0], cmdline_password);
-    smemclr(cmdline_password, strlen(cmdline_password));
-    sfree(cmdline_password);
-    cmdline_password = NULL;
-    tried_once = true;
+    //smemclr(cmdline_password, strlen(cmdline_password));
+    //sfree(cmdline_password);
+    //cmdline_password = NULL;
+    //tried_once = true;
     return 1;
 }
 
