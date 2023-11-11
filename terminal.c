@@ -7114,18 +7114,10 @@ static void send_screen_to_parent(Terminal* term)
 	clipme_internal(term, top, bottom, 0, TRUE, NULL, 0, true);
 }
 
-size_t term_data(Terminal *term, bool is_stderr, const void *data, size_t len)
+static size_t term_data_internal(Terminal *term, bool is_stderr, const void *data, size_t len)
 {
     bufchain_add(&term->inbuf, data, len);
     term_added_data(term);
-
-    /* capture text when enter is pressed or mouse right click */
-    if (term->text_capture_pending &&
-        (memchr(data, '\r', len) || memchr(data, '\n', len)))
-    {
-        term->text_capture_pending = 0;
-        send_screen_to_parent(term);
-    }
 
     /*
      * term_out() always completely empties inbuf. Therefore,
@@ -7147,6 +7139,48 @@ size_t term_data(Terminal *term, bool is_stderr, const void *data, size_t len)
      * In practice, I can't imagine this causing serious trouble.
      */
     return 0;
+}
+
+static const char* get_first_return(const void* data, size_t len)
+{
+    const char* r_ = memchr(data, '\r', len);
+    const char* n_ = memchr(data, '\n', len);
+    if (r_ == NULL || n_ == NULL)
+    {
+        return (r_ == NULL) ? n_ : r_;
+    }
+
+    return (r_ < n_) ? r_ : n_;
+}
+
+size_t term_data(Terminal* term, bool is_stderr, const void* data, size_t len)
+{
+    if (!term->text_capture_pending)
+    {
+        return term_data_internal(term, is_stderr, data, len);
+    }
+
+    const char* first_return = get_first_return(data, len);
+
+    if (first_return == NULL)
+    {
+        return term_data_internal(term, is_stderr, data, len);
+    }
+
+    int first_part_len = (first_return - (const char*)data);
+
+    if (first_part_len > 0)
+    {
+        term_data_internal(term, is_stderr, data, first_part_len);
+    }
+
+    send_screen_to_parent(term);
+    term->text_capture_pending = 0;
+
+    if (len > first_part_len)
+    {
+        term_data_internal(term, is_stderr, first_return, len - first_part_len);
+    }
 }
 
 void term_provide_logctx(Terminal *term, LogContext *logctx)
