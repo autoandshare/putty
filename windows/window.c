@@ -2209,6 +2209,42 @@ static void free_hdc(HDC hdc)
     ReleaseDC(wgs.term_hwnd, hdc);
 }
 
+#define WM_COPYDATA_UPDATE_HOST_AND_CREDENTIALS 1
+typedef struct
+{
+    char host[256];
+    char username[256];
+    char password[256];
+} HostCredentials;
+
+void set_password(const char *password);
+static BOOL handle_copydata(COPYDATASTRUCT *cds, Terminal *term)
+{
+    if (!cds || !term)
+        return FALSE;
+
+    switch (cds->dwData)
+    {
+    case WM_COPYDATA_UPDATE_HOST_AND_CREDENTIALS:
+        if (cds->cbData == sizeof(HostCredentials) && cds->lpData)
+        {
+            HostCredentials *hc = (HostCredentials *)cds->lpData;
+            if (strlen(hc->host) > 0)
+                conf_set_str(conf, CONF_host, hc->host);
+            if (strlen(hc->username) > 0)
+                conf_set_str(conf, CONF_username, hc->username);
+            if (strlen(hc->password) > 0)
+                set_password(hc->password);
+            return TRUE;
+        }
+        break;
+    default:
+        return FALSE;
+    }
+
+    return FALSE;
+}
+
 static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
                                 WPARAM wParam, LPARAM lParam)
 {
@@ -3400,6 +3436,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
       case WM_GOT_CLIPDATA:
         process_clipdata((HGLOBAL)lParam, wParam);
         return 0;
+      case WM_COPYDATA: {
+          COPYDATASTRUCT *cds = (COPYDATASTRUCT *)lParam;
+          return handle_copydata(cds, term);
+      }
       default:
         if (message == wm_mousewheel || message == WM_MOUSEWHEEL) {
             bool shift_pressed = false, control_pressed = false;

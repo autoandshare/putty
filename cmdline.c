@@ -53,6 +53,15 @@ static void cmdline_save_param(const char *p, const char *value, int pri)
 }
 
 static char *cmdline_password = NULL;
+void set_password(const char *password)
+{
+    if (cmdline_password)
+    {
+        smemclr(cmdline_password, strlen(cmdline_password));
+        sfree(cmdline_password);
+    }
+    cmdline_password = dupstr(password);
+}
 
 void cmdline_cleanup(void)
 {
